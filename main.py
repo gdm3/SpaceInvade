@@ -47,27 +47,7 @@ def blitRotate(surf, image, pos, originPos, angle):
     surf.blit(rotated_image, rotated_image_rect)
   
 
-def rotate(image, rect, angle):
-    """Rotate the image while keeping its center."""
-    # Rotate the original image without modifying it.
-    new_image = pygame.transform.rotate(image, angle)
-    # Get a new rect with the center of the old rect.
-    rect = new_image.get_rect(center=rect.center)
-    return new_image, rect
-    
-    """Rotate the surface around the pivot point.
 
-    Args:
-        surface (pygame.Surface): The surface that is to be rotated.
-        angle (float): Rotate by this angle.
-        pivot (tuple, list, pygame.math.Vector2): The pivot point.
-        offset (pygame.math.Vector2): This vector is added to the pivot.
-    """
-    rotated_image = pygame.transform.rotozoom(surface, -angle, 1)  # Rotate the image.
-    rotated_offset = offset.rotate(angle)  # Rotate the offset vector.
-    # Add the offset vector to the center/pivot point to shift the rect.
-    rect = rotated_image.get_rect(center=pivot+rotated_offset)
-    return rotated_image, rect  # Return the rotated image and shifted rect.
 
 def create_neon(surf):
     surf_alpha = surf.convert_alpha()
