@@ -9,8 +9,9 @@ height = 700
 fps = 60
 global showhitboxes
 showhitboxes = False
-showAsteroidSpawn = True
-
+showAsteroidSpawn = False
+AsteroidSpawnRate = 40
+modMenu = True
 ## initialize pygame and create window
 pygame.init()
 pygame.mixer.init()  ## For sound
@@ -79,6 +80,36 @@ class Bullet(pygame.sprite.Sprite):
             pygame.draw.rect(screen, (255, 255, 255), self.rect, 1)
         
         
+        
+        
+def bezier(p0, p1, p2, t):
+    px = p0[0]*(1-t)**2 + 2*(1-t)*t*p1[0] + p2[0]*t**2
+    py = p0[1]*(1-t)**2 + 2*(1-t)*t*p1[1] + p2[1]*t**2   
+    return px, py
+class UFO(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__()
+        self.rect = pygame.rect.Rect(0, 0, 100, 100)
+        self.image = pygame.image.load("UFO.png")     
+        self.point1 = (random.randint(0, width), random.randint(0, height))
+        self.point2 = (random.randint(0, width), random.randint(0, height))
+        self.point3 = (random.randint(0, width), random.randint(0, height))
+        self.counter = 0
+        self.counter2 = 0
+    def update(self):
+        self.counter2 += 1
+        if self.counter2 == 1:
+            self.counter += 1
+            self.counter2 = 0
+        if self.counter == 101:
+            self.counter = 0
+            self.point1 = self.point3
+            self.point2 = (random.randint(0, width), random.randint(0, height))
+            self.point3 = (random.randint(0, width), random.randint(0, height))
+        px, py = bezier(self.point1, self.point2, self.point3, self.counter / 100)
+            
+        self.rect.x = px
+        self.rect.y = py
 class Asteroid(pygame.sprite.Sprite):
     def __init__(self, sprites, screen, stage=None):
         super().__init__()
@@ -170,6 +201,15 @@ class Asteroid(pygame.sprite.Sprite):
             self.rect.x = prevx
             self.rect.y = prevy
         
+class Button():
+    def __init__(self, x, y, w, h, text):
+        self.rect = pygame.Rect(x, y, w, h)
+        self.text = text
+    def draw(self, screen):
+        pygame.draw.rect(screen, (255, 255, 255), self.rect, 1)
+        font = pygame.font.SysFont("Arial", 20)
+        text = font.render(self.text, True, (255, 255, 255))
+        screen.blit(text, (self.rect.x + 5, self.rect.y + 5))
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
@@ -196,8 +236,14 @@ class Player(pygame.sprite.Sprite):
     
         
 def main():
-    global showhitboxes, showAsteroidSpawn
+    #UI elements =============
+    hitboxes = Button(10, 10, 100, 30, "Hitboxes")
+    spawnhitboxes = Button(10, 50, 100, 30, "Spawn Hitboxes")
+    
+    #globals ------------
+    global showhitboxes, showAsteroidSpawn, modMenu
     ## Game loop
+    mouseRect = pygame.Rect(0, 0, 1, 1)
     player = Player()
     playerGroup = pygame.sprite.Group(player)
     running = True
@@ -205,7 +251,7 @@ def main():
     asteroids = pygame.sprite.Group()
     shotCounter = 0
     canShoot = True
-
+    ufogroup = pygame.sprite.Group()
     while running:
 
     
@@ -229,14 +275,27 @@ def main():
                         showAsteroidSpawn = False
                     else:
                         showAsteroidSpawn = True
-                    
+                if event.key == pygame.K_u:
+                    ufogroup.add(UFO())
+                if event.key == pygame.K_m:
+                    if modMenu == True:
+                        modMenu = False
+                    else:
+                        modMenu = True
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if modMenu == True:
+                    if pygame.Rect.colliderect(mouseRect, hitboxes.rect):
+                        if showhitboxes == True:
+                            showhitboxes = False
+                        else:
+                            showhitboxes = True
 
         keys = pygame.key.get_pressed()
         rotateaccel = 0
         if keys[pygame.K_a]:
-            rotateaccel += .04 * dt
+            rotateaccel += .02 * dt
         if keys[pygame.K_d]:
-            rotateaccel -= .04 * dt
+            rotateaccel -= .02 * dt
         if keys[pygame.K_w]:
             
             right = math.cos(math.radians(player.preFrameRotation + 270))
@@ -251,10 +310,18 @@ def main():
         if keys[pygame.K_p]:
             asteroids.add(Asteroid(playerGroup, screen)) 
         
-        if random.randint(1, 40) == 1:
+        if random.randint(1, AsteroidSpawnRate) == 1:
             asteroids.add(Asteroid(playerGroup, screen))
         
         screen.fill((0, 0, 0))
+        
+        if modMenu == True:
+            mouseRect.center = pygame.mouse.get_pos()
+            #hitboxes
+            #get mousedown
+            
+            hitboxes.draw(screen)
+            
         for i in playerGroup:
             if showhitboxes == True:
                 pygame.draw.rect(screen, (255, 255, 255), i.rect, 1)
@@ -276,7 +343,8 @@ def main():
 
                     i.kill()
                     break
-                
+        ufogroup.update()
+        ufogroup.draw(screen)
         asteroids.draw(screen)
         for shot in shots:
             shot.update(screen)               
