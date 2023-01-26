@@ -11,7 +11,9 @@ global showhitboxes
 showhitboxes = False
 showAsteroidSpawn = False
 AsteroidSpawnRate = 40
-modMenu = True
+modMenu = False
+invinsibilityOn = False
+renderAstroids = True
 ## initialize pygame and create window
 pygame.init()
 pygame.mixer.init()  ## For sound
@@ -69,7 +71,7 @@ class Bullet(pygame.sprite.Sprite):
         self.velocity.x += right * -8
         self.velocity.y += bottom * 8
         self.rect = pygame.rect.Rect(self.position.x, self.position.y, 5, 10)
-        
+        self.bad = False
     def update(self, screen):
         newPosition = self.velocity + self.position
         
@@ -80,8 +82,7 @@ class Bullet(pygame.sprite.Sprite):
             pygame.draw.rect(screen, (255, 255, 255), self.rect, 1)
         
         
-        
-        
+         
 def bezier(p0, p1, p2, t):
     px = p0[0]*(1-t)**2 + 2*(1-t)*t*p1[0] + p2[0]*t**2
     py = p0[1]*(1-t)**2 + 2*(1-t)*t*p1[1] + p2[1]*t**2   
@@ -110,6 +111,19 @@ class UFO(pygame.sprite.Sprite):
             
         self.rect.x = px
         self.rect.y = py
+    def shoot(self,playerGroup, group):
+        for i in playerGroup:
+            bullet = Bullet(math.degrees(math.atan2(i.rect.y - self.rect.y, i.rect.x - self.rect.x)), (self.rect.x, self.rect.y))
+            
+            bullet.velocity.x = (i.rect.x - self.rect.x ) / 100 
+            bullet.velocity.y = (i.rect.y - self.rect.y ) / 100
+            dist = math.hypot(bullet.velocity.x * 100, bullet.velocity.y * 100)
+            bullet.velocity.x = (bullet.velocity.x / dist) * 500
+            bullet.velocity.y = (bullet.velocity.y / dist) * 500
+            bullet.bad = True
+            group.append(bullet)
+            
+            
 class Asteroid(pygame.sprite.Sprite):
     def __init__(self, sprites, screen, stage=None):
         super().__init__()
@@ -237,11 +251,13 @@ class Player(pygame.sprite.Sprite):
         
 def main():
     #UI elements =============
-    hitboxes = Button(10, 10, 100, 30, "Hitboxes")
-    spawnhitboxes = Button(10, 50, 100, 30, "Spawn Hitboxes")
+    hitboxes = Button(10, 10, 80, 30, "Hitboxes")
+    spawnhitboxes = Button(10, 50, 140, 30, "Spawn Hitboxes")
+    invisibility = Button(10, 90, 100, 30, "Invisibility")
+    RenderAsteroid = Button(10, 130, 140, 30, "Render Asteroids")
     
     #globals ------------
-    global showhitboxes, showAsteroidSpawn, modMenu
+    global showhitboxes, showAsteroidSpawn, modMenu, invinsibilityOn, renderAstroids
     ## Game loop
     mouseRect = pygame.Rect(0, 0, 1, 1)
     player = Player()
@@ -265,16 +281,7 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_o:
-                    if showhitboxes == True:
-                        showhitboxes = False
-                    else:
-                        showhitboxes = True
-                if event.key == pygame.K_i:
-                    if showAsteroidSpawn == True:
-                        showAsteroidSpawn = False
-                    else:
-                        showAsteroidSpawn = True
+            
                 if event.key == pygame.K_u:
                     ufogroup.add(UFO())
                 if event.key == pygame.K_m:
@@ -289,6 +296,21 @@ def main():
                             showhitboxes = False
                         else:
                             showhitboxes = True
+                    if pygame.Rect.colliderect(mouseRect, spawnhitboxes.rect):
+                        if showAsteroidSpawn == True:
+                            showAsteroidSpawn = False
+                        else:
+                            showAsteroidSpawn = True
+                    if pygame.Rect.colliderect(mouseRect, invisibility.rect):
+                        if invinsibilityOn == True:
+                            invinsibilityOn = False
+                        else:
+                            invinsibilityOn = True
+                    if pygame.Rect.colliderect(mouseRect, RenderAsteroid.rect):
+                        if renderAstroids == True:
+                            renderAstroids = False
+                        else:
+                            renderAstroids = True
 
         keys = pygame.key.get_pressed()
         rotateaccel = 0
@@ -314,21 +336,23 @@ def main():
             asteroids.add(Asteroid(playerGroup, screen))
         
         screen.fill((0, 0, 0))
-        
+        if random.randint(1, 100) == 1:
+            for i in ufogroup:
+                i.shoot(playerGroup, shots)
         if modMenu == True:
             mouseRect.center = pygame.mouse.get_pos()
-            #hitboxes
-            #get mousedown
-            
             hitboxes.draw(screen)
-            
+            spawnhitboxes.draw(screen)
+            invisibility.draw(screen)
+            RenderAsteroid.draw(screen)
         for i in playerGroup:
             if showhitboxes == True:
                 pygame.draw.rect(screen, (255, 255, 255), i.rect, 1)
         asteroids.update(screen)
         for asteroid in asteroids:
-            if pygame.Rect.colliderect(asteroid.rect, player.rect):
-                running = False
+            if invinsibilityOn == False:
+                if pygame.Rect.colliderect(asteroid.rect, player.rect):
+                    running = False
             for i in shots:
                 if pygame.Rect.colliderect(asteroid.rect, i.rect):
                     shots.remove(i)
@@ -343,9 +367,18 @@ def main():
 
                     i.kill()
                     break
+        for i in shots:
+            if i.bad == True:
+                if pygame.Rect.colliderect(i.rect, player.rect):
+                    if invinsibilityOn == False:
+                        running = False   
         ufogroup.update()
         ufogroup.draw(screen)
-        asteroids.draw(screen)
+        if showhitboxes == True:
+            for i in ufogroup:
+                pygame.draw.rect(screen, (255, 255, 255), i.rect, 1)
+        if renderAstroids == True:
+            asteroids.draw(screen)
         for shot in shots:
             shot.update(screen)               
         playerGroup.update(rotateaccel, screen)
