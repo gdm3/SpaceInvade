@@ -21,6 +21,9 @@ screen = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Asteroids")
 clock = pygame.time.Clock()  
 
+pygame.font.init() 
+my_font = pygame.font.SysFont('Comic Sans MS', 30)
+
 def random1(x, y):
     while True:
         h = random.randint(x, y) * random.choice([-1, 0.5, -.7, -.8, -.9 -0.5, 0.6, .7, .8, .9, 1])
@@ -268,9 +271,11 @@ def main():
     shotCounter = 0
     canShoot = True
     ufogroup = pygame.sprite.Group()
+    score = 0
+    scoreText  = my_font.render(str(score), False, (0, 0, 0))
     while running:
 
-    
+        scoreText  = my_font.render(str(score), False, (255, 255, 255))
         dt = clock.tick(fps)  
         shotCounter += 1
         if shotCounter > 30:  
@@ -331,7 +336,16 @@ def main():
                 canShoot = False
         if keys[pygame.K_p]:
             asteroids.add(Asteroid(playerGroup, screen)) 
-        
+        if score < 10:
+            AsteroidSpawnRate = 100
+        elif score < 20:
+            AsteroidSpawnRate = 80
+        elif score < 30:
+            AsteroidSpawnRate = 70
+        elif score > 30:
+            if ufogroup.__len__() == 0:
+                ufogroup.add(UFO())
+                
         if random.randint(1, AsteroidSpawnRate) == 1:
             asteroids.add(Asteroid(playerGroup, screen))
         
@@ -355,6 +369,9 @@ def main():
                     running = False
             for i in shots:
                 if pygame.Rect.colliderect(asteroid.rect, i.rect):
+                    score += 1 
+                    if asteroid.stage == 1:
+                        score += 1
                     shots.remove(i)
                     asteroids.remove(asteroid)
                     if asteroid.stage != 1:
@@ -382,6 +399,7 @@ def main():
         for shot in shots:
             shot.update(screen)               
         playerGroup.update(rotateaccel, screen)
+        screen.blit(scoreText, (10, height - 50))
         pygame.display.flip()       
 while True:
     main()
